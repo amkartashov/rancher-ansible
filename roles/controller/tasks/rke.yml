@@ -1,3 +1,14 @@
 - name: download rke
   get_url: url={{ rke_url }} dest=/tmp/rke mode=a+x
-  
+- name: generate ssh key on first controller
+  command: ssh-keygen -t rsa -f /root/.ssh/id_rsa -N ''
+  args:
+    creates: /root/.ssh/id_rsa
+- name: generate ssh public key
+  command: ssh-keygen -y -f /root/.ssh/id_rsa
+  register: ssh_keygen_public
+- name: install ssh key to all servers
+  authorized_key: user=root key={{ ssh_keygen_public.stdout }}
+  delegate_to: "{{ item }}"
+  with_items:
+  - "{{ groups['g_controllers'] | union(groups['g_workers']) }}"
