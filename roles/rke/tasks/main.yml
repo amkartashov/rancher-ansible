@@ -7,6 +7,7 @@
 - name: generate ssh public key
   command: ssh-keygen -y -f /root/.ssh/id_rsa
   register: ssh_keygen_public
+  changed_when: false
 - name: install ssh key to all servers
   authorized_key: user=root key={{ ssh_keygen_public.stdout }}
   delegate_to: "{{ item }}"
