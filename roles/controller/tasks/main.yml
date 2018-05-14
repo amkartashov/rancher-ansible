@@ -1,5 +1,2 @@
 - include_role:
     name: docker
-- name: run rke
-  include: rke.yml
-  run_once: yes

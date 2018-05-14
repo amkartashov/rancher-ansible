@@ -12,6 +12,8 @@
   delegate_to: "{{ item }}"
   with_items:
   - "{{ groups['g_controllers'] | union(groups['g_workers']) }}"
+- name: install pip
+  apt:  name=python-pip state=present update_cache=yes install_recommends=False
 - name: install pyOpenSSL for certificate generation
   pip: name=pyOpenSSL
 - name: create directory for CA key
