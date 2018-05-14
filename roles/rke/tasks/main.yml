@@ -13,27 +13,32 @@
   delegate_to: "{{ item }}"
   with_items:
   - "{{ groups['g_controllers'] | union(groups['g_workers']) }}"
-- name: install pip
-  apt:  name=python-pip state=present update_cache=yes install_recommends=False
-- name: install pyOpenSSL for certificate generation
-  pip: name=pyOpenSSL
-- name: create directory for CA key
-  file: path=/root/CA mode=0700 state=directory
 - name: generate certificates
   block:
+  - name: create directory for certificates
+    file: path=/root/CERTS mode=0700 state=directory
   - name: generate CA key
-    openssl_privatekey:
-      path: /root/CA/key
-  - name: generate CA CSR
-    openssl_csr:
-      path: /root/CA/csr
-      common_name: cattle
-      privatekey_path: /root/CA/key
-  - name: create CA certificate
-    openssl_certificate:
-      path: /root/CA/cert
-      privatekey_path: /root/CA/key
-      csr_path: /root/CA/csr
-      provider: selfsigned
-      # valid for 10 years
-      valid_in: 315360000
+    shell: >
+      openssl genrsa -out /root/CERTS/ca-key.pem 2048
+      creates=/root/CERTS/ca-key.pem
+  - name: generate CA
+    shell: >
+      openssl req -x509 -new -nodes -days 10000
+      -key /root/CERTS/ca-key.pem
+      -out /root/CERTS/ca.pem
+      -subj "/CN=rancherca"
+      creates=/root/CERTS/ca.pem
+  - name: generate rancher private key
+    shell: >
+      openssl genrsa -out /root/CERTS/rancher-key.pem 2048
+      creates=/root/CERTS/rancher-key.pem
+  - name: generate rancher CSR
+    shell: >
+      openssl req -new -sha256 -key /root/CERTS/rancher-key.pem 
+      -out /root/CERTS/rancher.csr -subj "/CN={{ rancher_domain }}"
+      creates=/root/CERTS/rancher.csr
+  - name: sign rancher certificate
+    shell: >
+      openssl x509 -req -CA /root/CERTS/ca.pem -CAkey /root/CERTS/ca-key.pem
+      -CAcreateserial -days 10000 -in /root/CERTS/rancher.csr -out /root/CERTS/rancher.crt
+      creates=/root/CERTS/rancher.crt
