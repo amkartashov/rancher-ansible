@@ -1,5 +1,5 @@
 - name: download rke
-  get_url: url={{ rke_url }} dest=/tmp/rke mode=a+x
+  get_url: url={{ rke_url }} dest=/root/rke mode=a+x
 - name: generate ssh key on first controller
   command: ssh-keygen -t rsa -f /root/.ssh/id_rsa -N ''
   args:
@@ -52,11 +52,11 @@
     slurp: src=/root/CERTS/rancher.crt
     register: slurp_crt
 - name: generate rke config
-  template: src=rke.config.yml.j2 dest=/tmp/rke.config.yml
+  template: src=rke.config.yml.j2 dest=/root/rke.config.yml
   vars:
     tls_crt: "{{ slurp_crt.content }}" 
     tls_key: "{{ slurp_key.content }}"
     ca_crt: "{{ slurp_ca.content }}"
 - name: run rke
-  command: /tmp/rke up --config /tmp/rke.config.yml
+  command: /root/rke up --config /root/rke.config.yml
 
