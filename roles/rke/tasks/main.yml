@@ -42,3 +42,18 @@
       openssl x509 -req -CA /root/CERTS/ca.pem -CAkey /root/CERTS/ca-key.pem
       -CAcreateserial -days 10000 -in /root/CERTS/rancher.csr -out /root/CERTS/rancher.crt
       creates=/root/CERTS/rancher.crt
+  - name: register CA
+    slurp: src=/root/CERTS/ca.pem
+    register: slurp_ca
+  - name: register rancher private key
+    slurp: src=/root/CERTS/rancher-key.pem
+    register: slurp_key
+  - name: register rancher certificate
+    slurp: src=/root/CERTS/rancher.crt
+    register: slurp_crt
+- name: generate rke config
+  template: src=rke.config.yml.j2 dest=/tmp/rke.config.yml
+  vars:
+    tls_crt: "{{ slurp_crt.content }}" 
+    tls_key: "{{ slurp_key.content }}"
+    ca_crt: "{{ slurp_ca.content }}"

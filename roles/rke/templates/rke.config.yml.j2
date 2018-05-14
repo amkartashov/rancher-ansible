@@ -1,0 +1,145 @@
+nodes:
+{% for host in groups['g_controllers'] | difference(groups['g_workers']) %}
+  - address: {{ hostvars[host].ansible_host }}
+    user: root
+    role: [controlplane,etcd]
+    ssh_key_path: /root/.ssh/id_rsa
+{% endfor %}
+{% for host in groups['g_workers'] | difference(groups['g_controllers']) %}
+  - address: {{ hostvars[host].ansible_host }}
+    user: root
+    role: [worker]
+    ssh_key_path: /root/.ssh/id_rsa
+{% endfor %}
+{% for host in groups['g_controllers'] | intersect(groups['g_workers']) %}
+  - address: {{ hostvars[host].ansible_host }}
+    user: root
+    role: [controlplane,etcd,worker]
+    ssh_key_path: /root/.ssh/id_rsa
+{% endfor %}
+addons: |-
+  ---
+  kind: Namespace
+  apiVersion: v1
+  metadata:
+    name: cattle-system
+  ---
+  kind: ServiceAccount
+  apiVersion: v1
+  metadata:
+    name: cattle-admin
+    namespace: cattle-system
+  ---
+  kind: ClusterRoleBinding
+  apiVersion: rbac.authorization.k8s.io/v1
+  metadata:
+    name: cattle-crb
+    namespace: cattle-system
+  subjects:
+  - kind: ServiceAccount
+    name: cattle-admin
+    namespace: cattle-system
+  roleRef:
+    kind: ClusterRole
+    name: cluster-admin
+    apiGroup: rbac.authorization.k8s.io
+  ---
+  apiVersion: v1
+  kind: Secret
+  metadata:
+    name: cattle-keys-ingress
+    namespace: cattle-system
+  type: Opaque
+  data:
+    tls.crt: {{ tls_crt }}  # ssl cert for ingress. If selfsigned, must be signed by same CA as cattle server
+    tls.key: {{ tls_key }}  # ssl key for ingress. If selfsigned, must be signed by same CA as cattle server
+  ---
+  apiVersion: v1
+  kind: Secret
+  metadata:
+    name: cattle-keys-server
+    namespace: cattle-system
+  type: Opaque
+  data:
+    cacerts.pem: {{ ca_crt }}  # CA cert used to sign cattle server cert and key
+  ---
+  apiVersion: v1
+  kind: Service
+  metadata:
+    namespace: cattle-system
+    name: cattle-service
+    labels:
+      app: cattle
+  spec:
+    ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+      name: http
+    - port: 443
+      targetPort: 443
+      protocol: TCP
+      name: https
+    selector:
+      app: cattle
+  ---
+  apiVersion: extensions/v1beta1
+  kind: Ingress
+  metadata:
+    namespace: cattle-system
+    name: cattle-ingress-http
+    annotations:
+      nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "1800"   # Max time in seconds for ws to remain shell window open
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "1800"   # Max time in seconds for ws to remain shell window open
+  spec:
+    rules:
+    - host: {{ rancher_domain }}  # FQDN to access cattle server
+      http:
+        paths:
+        - backend:
+            serviceName: cattle-service
+            servicePort: 80
+    tls:
+    - secretName: cattle-keys-ingress
+      hosts:
+      - {{ rancher_domain }}      # FQDN to access cattle server
+  ---
+  kind: Deployment
+  apiVersion: extensions/v1beta1
+  metadata:
+    namespace: cattle-system
+    name: cattle
+  spec:
+    replicas: 1
+    template:
+      metadata:
+        labels:
+          app: cattle
+      spec:
+        serviceAccountName: cattle-admin
+        containers:
+        - image: rancher/rancher:latest
+          imagePullPolicy: Always
+          name: cattle-server
+          ports:
+          - containerPort: 80
+            protocol: TCP
+          - containerPort: 443
+            protocol: TCP
+          volumeMounts:
+          - mountPath: /etc/rancher/ssl
+            name: cattle-keys-volume
+            readOnly: true
+          args:
+          - --advertise-address=$(POD_IP)
+          env:
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+        volumes:
+        - name: cattle-keys-volume
+          secret:
+            defaultMode: 420
+            secretName: cattle-keys-server
