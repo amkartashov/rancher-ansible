@@ -4,7 +4,7 @@
 # domain under which control panel will be accessible
 rancher_domain: rancher.domain.tld
 # where to download rke
-rke_url: https://github.com/rancher/rke/releases/download/v0.1.7-rc2/rke_linux-amd64
+rke_url: https://github.com/rancher/rke/releases/download/v0.1.6/rke_linux-amd64
 ### Modify ABOVE
 
 

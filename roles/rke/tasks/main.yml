@@ -57,3 +57,6 @@
     tls_crt: "{{ slurp_crt.content }}" 
     tls_key: "{{ slurp_key.content }}"
     ca_crt: "{{ slurp_ca.content }}"
+- name: run rke
+  command: /tmp/rke up --config /tmp/rke.config.yml
+
