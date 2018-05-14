@@ -8,8 +8,9 @@ rke_url: https://github.com/rancher/rke/releases/download/v0.1.6/rke_linux-amd64
 ### Modify ABOVE
 
 
-# sensitive parameters, change in vault with
+# sensitive parameters, CHANGE IN VAULT with
 # ansible-vault create inventory/group_vars/all/vault
+rancher_password: "{{ vault_rancher_password }}"
 ansible_ssh_pass: "{{ vault_ansible_ssh_pass }}"
 
 # leave as is below

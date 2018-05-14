@@ -59,4 +59,49 @@
     ca_crt: "{{ slurp_ca.content }}"
 - name: run rke
   command: /root/rke up --config /root/rke.config.yml
+- name: try password
+  uri:
+    url: https://127.0.0.1/v3-public/localProviders/local?action=login
+    method: POST
+    validate_certs: no
+    headers:
+      Host: "{{ rancher_domain }}"
+      Content-Type: "application/json"
+    body: ' {"username":"admin","password":"{{ rancher_password }}"}'
+    return_content: no
+  register: try_password_response
+  failed_when: false
+  changed_when: false
+- debug: var=try_password_response
+- name: set password
+  when: not try_password_response.status == 201
+  block:
+  - name: get login token
+    uri:
+      url: https://127.0.0.1/v3-public/localProviders/local?action=login
+      method: POST
+      validate_certs: no
+      headers:
+        Host: "{{ rancher_domain }}"
+        Content-Type: "application/json"
+      body: ' {"username":"admin","password":"admin"}'
+      return_content: yes
+    register: login_token_response
+    failed_when: not login_token_response.status == 201
+    changed_when: false
+  - set_fact: login_token="{{ login_token_response.json | json_query('token') }}"
+  - name: set admin password
+    uri:
+      url: https://127.0.0.1/v3/users?action=changepassword
+      method: POST
+      validate_certs: no
+      headers:
+        Host: "{{ rancher_domain }}"
+        Content-Type: "application/json"
+        Authorization: Bearer {{ login_token }}
+      body: ' {"currentPassword":"admin","newPassword":"{{ rancher_password }}"}'
+      return_content: yes
+    register: change_password_response
+    failed_when: not change_password_response.status == 200
+
 
