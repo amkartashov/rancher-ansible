@@ -1,0 +1,3 @@
+- hosts: g_controllers
+  roles:
+  - role: controller

@@ -1,0 +1,3 @@
+- hosts: g_workers
+  roles:
+  - role: worker
