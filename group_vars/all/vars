@@ -1,0 +1,10 @@
+---
+# file: group_vars/all
+
+# sensitive parameters, change in vault with
+# ansible-vault create inventory/group_vars/all/vault
+ansible_ssh_pass: "{{ vault_ansible_ssh_pass }}"
+
+# leave as is below
+ansible_connection: paramiko
+ansible_python_interpreter: /usr/bin/env python
