@@ -12,3 +12,25 @@
   delegate_to: "{{ item }}"
   with_items:
   - "{{ groups['g_controllers'] | union(groups['g_workers']) }}"
+- name: install pyOpenSSL for certificate generation
+  pip: name=pyOpenSSL
+- name: create directory for CA key
+  file: path=/root/CA mode=0700 state=directory
+- name: generate certificates
+  block:
+  - name: generate CA key
+    openssl_privatekey:
+      path: /root/CA/key
+  - name: generate CA CSR
+    openssl_csr:
+      path: /root/CA/csr
+      common_name: cattle
+      privatekey_path: /root/CA/key
+  - name: create CA certificate
+    openssl_certificate:
+      path: /root/CA/cert
+      privatekey_path: /root/CA/key
+      csr_path: /root/CA/csr
+      provider: selfsigned
+      # valid for 10 years
+      valid_in: 315360000

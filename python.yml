@@ -5,3 +5,10 @@
     raw: test -e /usr/bin/python || (apt -y update && apt install -y python-minimal)
     register: install_python_result
     changed_when: not install_python_result.stdout == ""
+- hosts: g_controllers[0]
+  tasks:
+  - name: install pip
+    raw: test -e /usr/bin/pip || (apt -y update && apt install -y python-pip)
+    register: install_python_result
+    changed_when: not install_python_result.stdout == ""
+
