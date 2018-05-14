@@ -1,0 +1,3 @@
+- name: download rke
+  get_url: url={{ rke_url }} dest=/tmp/rke mode=a+x
+  

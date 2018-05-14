@@ -1,5 +1,9 @@
 ---
 # file: group_vars/all
+# Modify BELOW
+rke_url: https://github.com/rancher/rke/releases/download/v0.1.7-rc2/rke_linux-amd64
+# Modify ABOVE
+
 
 # sensitive parameters, change in vault with
 # ansible-vault create inventory/group_vars/all/vault
