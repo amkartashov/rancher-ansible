@@ -1,0 +1,4 @@
+docker_version: "17.03.*"
+# flag to proceed with rancher installation
+# even if docker version is not supported
+ignore_docker_version: false
