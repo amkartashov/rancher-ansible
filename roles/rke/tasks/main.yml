@@ -59,6 +59,21 @@
     ca_crt: "{{ slurp_ca.content }}"
 - name: run rke
   command: /root/rke up --config /root/rke.config.yml
+- name: wait for rancher api to come up
+  uri:
+    url: https://127.0.0.1/v3/
+    validate_certs: no
+    headers:
+      Host: "{{ rancher_domain }}"
+    return_content: yes
+  register: try_rancher_api_response
+  # we expect Unauthorized
+  until: ('status' in try_rancher_api_response) and (try_rancher_api_response.status == 401)
+  changed_when: false
+  # should fail after 5 minutes of attempts
+  failed_when: try_rancher_api_response.attempts == 60
+  retries: 60
+  delay: 5
 - name: try password
   uri:
     url: https://127.0.0.1/v3-public/localProviders/local?action=login
@@ -87,7 +102,7 @@
         Content-Type: "application/json"
       body: ' {"username":"admin","password":"admin"}'
       return_content: yes
-      status: 201
+      status_code: 201
     register: login_token_response
     changed_when: false
   - set_fact: login_token={{ login_token_response.json | json_query('token') }}
@@ -102,7 +117,6 @@
         Authorization: Bearer {{ login_token }}
       body: ' {"currentPassword":"admin","newPassword":"{{ rancher_password }}"}'
       return_content: yes
-      status: 200
     register: change_password_response
 - name: set server url
   block:
@@ -111,7 +125,6 @@
     uri:
       url: https://127.0.0.1/v3/settings/server-url
       validate_certs: no
-      status: 200
       headers:
         Host: "{{ rancher_domain }}"
         Content-Type: "application/json"
@@ -123,7 +136,6 @@
     when: server_url_response.json | json_query('value') != server_url
     uri:
       url: https://127.0.0.1/v3/settings/server-url
-      status: 200
       method: PUT
       validate_certs: no
       headers:
@@ -132,5 +144,3 @@
         Authorization: Bearer {{ login_token }}
       body: ' {"name":"server-url","value":"{{ server_url }}"}'
       return_content: no
-
-
