@@ -72,7 +72,8 @@
   register: try_password_response
   failed_when: false
   changed_when: false
-- debug: var=try_password_response
+- set_fact: login_token={{ try_password_response.json | json_query('token') }}
+  when: try_password_response.status == 201
 - name: set password
   when: not try_password_response.status == 201
   block:
@@ -86,10 +87,10 @@
         Content-Type: "application/json"
       body: ' {"username":"admin","password":"admin"}'
       return_content: yes
+      status: 201
     register: login_token_response
-    failed_when: not login_token_response.status == 201
     changed_when: false
-  - set_fact: login_token="{{ login_token_response.json | json_query('token') }}"
+  - set_fact: login_token={{ login_token_response.json | json_query('token') }}
   - name: set admin password
     uri:
       url: https://127.0.0.1/v3/users?action=changepassword
@@ -101,7 +102,35 @@
         Authorization: Bearer {{ login_token }}
       body: ' {"currentPassword":"admin","newPassword":"{{ rancher_password }}"}'
       return_content: yes
+      status: 200
     register: change_password_response
-    failed_when: not change_password_response.status == 200
+- name: set server url
+  block:
+  - set_fact: server_url=https://{{ rancher_domain }}
+  - name: get url
+    uri:
+      url: https://127.0.0.1/v3/settings/server-url
+      validate_certs: no
+      status: 200
+      headers:
+        Host: "{{ rancher_domain }}"
+        Content-Type: "application/json"
+        Authorization: Bearer {{ login_token }}
+      return_content: yes
+    register: server_url_response
+    changed_when: false
+  - name: set url
+    when: server_url_response.json | json_query('value') != server_url
+    uri:
+      url: https://127.0.0.1/v3/settings/server-url
+      status: 200
+      method: PUT
+      validate_certs: no
+      headers:
+        Host: "{{ rancher_domain }}"
+        Content-Type: "application/json"
+        Authorization: Bearer {{ login_token }}
+      body: ' {"name":"server-url","value":"{{ server_url }}"}'
+      return_content: no
 
 
